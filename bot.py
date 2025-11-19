@@ -1,118 +1,118 @@
 import telebot
-from telebot import types
-import json
 import random
 import os
+from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 
-TOKEN = "<8240072124:AAHz8TZSCltrxkLx4eyzCh84WgriGK3PfIo>"
+# ================== Настройка ==================
+TOKEN = '8240072124:AAHz8TZSCltrxkLx4eyzCh84WgriGK3PfIo'
 bot = telebot.TeleBot(TOKEN)
 
-DB_FILE = 'database.json'
-
-# Загрузка базы
-if os.path.exists(DB_FILE):
-    with open(DB_FILE, 'r', encoding='utf-8') as f:
-        database = json.load(f)
-else:
-    database = {}
-
-# Приветствия, шутки и мудрые мысли
+# ================== Данные ==================
+# Приветствия 1 к 5
 greetings = [
     "Здравствуйте!",
     "Привет!",
     "Добрый день!",
-    "Рад видеть вас!",
-    "С добром!"
+    "Рада видеть вас!",
+    "Приветствую!"
 ]
 
+# Шутки 1 к 40 (строгие, изысканные)
 jokes = [
-    "Жизнь — это то, что с тобой происходит, пока ты строишь планы. 😏",
-    "Не откладывай на завтра то, что можно оставить на послезавтра.",
-    "Утро вечера мудренее… особенно если утром кофе.",
-    "Чем старше становишься, тем меньше хочется делиться секретами с миром.",
-    "Не спорь с дураком — люди могут не заметить разницы.",
-    "Иногда тишина — лучший ответ на глупость.",
-    "Если бы лень была видом спорта, я был бы чемпионом.",
-    "Век живи — век учись, а на работу ходи.",
-    "Каждое утро — шанс напомнить миру, что ты проснулся.",
-    "Счастье — это когда кофе горячий, а Wi-Fi быстрый."
-]  # Добавь до 40 штук
+    "Не торопись, умный видит дальше.",
+    "Кто ищет лёгкие пути, тот сам себе тяжёлый груз.",
+    "Иногда молчание говорит больше, чем слова.",
+    "Человек смеётся не от счастья, а от здравого смысла.",
+    "Смех — это искра, а мудрость — огонь.",
+    "Кто видит без ошибок, тот видит глубже.",
+    "Юмор — зеркало ума, а не глупости.",
+    "Смешно тому, кто видит правду сквозь хаос.",
+    "Шутка, сказанная вовремя, ценнее тысячи слов.",
+    "Тот, кто смеётся над собой, управляет миром эмоций.",
+    # ...добавь до 40 по аналогии
+]
 
-wisdom = [
-    "Не тот велик, кто никогда не падал, а тот велик, кто падал и вставал.",
-    "Кто ищет — тот всегда найдет.",
-    "Слово не воробей: вылетит — не поймаешь, а мудрое останется навсегда.",
-    "Терпение и труд всё перетрут.",
-    "Истинная сила — в умении прощать.",
-    "Лучше сделать и пожалеть, чем не сделать и жалеть.",
-    "Смелость — не отсутствие страха, а умение действовать несмотря на него.",
-    "Доброта — это язык, который слышит каждый.",
-    "Мудрость приходит с опытом, а не с годами.",
-    "Знание без действия — это просто информация."
-]  # Добавь до 30 штук
+# Мудрые мысли 1 к 30
+wisdoms = [
+    "Сила человека — в его уме и сердце, а не в кулаках.",
+    "Тот, кто знает пределы, управляет собой.",
+    "Поступай так, чтобы завтра не стыдно было за сегодня.",
+    "Истинная свобода приходит с ответственностью.",
+    "Терпение — это ключ к мастерству.",
+    "Каждое действие оставляет след, выбирай осознанно.",
+    "Слова могут исцелять или ранить — выбирай мудро.",
+    "Знание без действия — пустой дар.",
+    "Прощение освобождает душу больше, чем обида.",
+    "Тишина иногда громче сотни слов.",
+    # ...добавь до 30 по аналогии
+]
 
-# Хранилище ожидающих названий
-awaiting_name = {}
+# База поставщиков (для примера, в будущем - sqlite или json)
+supplier_db = {}  # {название: фото_file_id}
 
-# Основной обработчик
-@bot.message_handler(content_types=['text', 'photo'])
-def handle_message(message):
+# ================== Кнопки ==================
+def start_keyboard():
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(KeyboardButton('/start'))
+    return markup
+
+# ================== Состояния пользователей ==================
+user_states = {}  # chat_id: {'waiting_for_name': False, 'last_photo_id': None}
+
+# ================== Обработчики ==================
+@bot.message_handler(commands=['start'])
+def handle_start(message):
     chat_id = message.chat.id
+    user_states[chat_id] = {'waiting_for_name': False, 'last_photo_id': None}
+    greet = random.choice(greetings)
+    bot.send_message(chat_id, f"{greet} Я готова к работе! 📸 Направьте фото или текст.", reply_markup=start_keyboard())
 
-    # Если фото
-    if message.content_type == 'photo':
-        file_id = message.photo[-1].file_id
-        file_info = bot.get_file(file_id)
-        file_path = file_info.file_path
-        file_name = f"{file_id}.jpg"
-
-        # Скачиваем
-        downloaded_file = bot.download_file(file_path)
-        with open(f'photos/{file_name}', 'wb') as f:
-            f.write(downloaded_file)
-
-        # Проверяем совпадение
-        if file_name in database:
-            bot.send_message(chat_id, f"Совпадение найдено:\nФото: {file_name}\nПоставщик: {database[file_name]}")
-        else:
-            awaiting_name[chat_id] = file_name
-            bot.send_message(chat_id, "Фото получено, но нужно название поставщика для сохранения. Пожалуйста, отправьте название.")
-
-    # Если текст
-    elif message.content_type == 'text':
-        # Если ждем название для фото
-        if chat_id in awaiting_name:
-            file_name = awaiting_name.pop(chat_id)
-            database[file_name] = message.text
-            with open(DB_FILE, 'w', encoding='utf-8') as f:
-                json.dump(database, f, ensure_ascii=False, indent=4)
-            bot.send_message(chat_id, f"Сохранено: {file_name} → {message.text}")
-        else:
-            # Поиск по тексту
-            matches = [k for k, v in database.items() if v.lower() == message.text.lower()]
-            if matches:
-                msg = "Найдены совпадения:\n" + "\n".join([f"{k} → {database[k]}" for k in matches])
-                bot.send_message(chat_id, msg)
-            else:
-                bot.send_message(chat_id, "Совпадений нет. Если хотите добавить новый, пришлите фото и подпишите его названием.")
-
-# ИИ-консультант
-@bot.message_handler(func=lambda m: True)
-def ai_response(message):
+@bot.message_handler(content_types=['photo'])
+def handle_photo(message):
     chat_id = message.chat.id
-    text = message.text
+    photo_id = message.photo[-1].file_id
+    text = message.caption.strip() if message.caption else ''
+    
+    if text:  # фото + текст
+        supplier_db[text.lower()] = photo_id
+        user_states[chat_id] = {'waiting_for_name': False, 'last_photo_id': None}
+        bot.send_message(chat_id, f"Фото с названием '{text}' сохранено ✅")
+    else:  # только фото
+        user_states[chat_id] = {'waiting_for_name': True, 'last_photo_id': photo_id}
+        bot.send_message(chat_id, "Нужен текст с названием поставщика для сохранения фото. Пожалуйста, пришлите название.")
 
-    # 1 из 10 шуток
-    if random.randint(1, 10) == 1:
-        bot.send_message(chat_id, random.choice(jokes))
-    # 1 из 30 мудрых мыслей
-    elif random.randint(1, 30) == 1:
-        bot.send_message(chat_id, random.choice(wisdom))
+@bot.message_handler(content_types=['text'])
+def handle_text(message):
+    chat_id = message.chat.id
+    text = message.text.strip().lower()
+    
+    if text == '/start':
+        handle_start(message)
+        return
+    
+    state = user_states.get(chat_id, {'waiting_for_name': False, 'last_photo_id': None})
+    
+    if state['waiting_for_name'] and state['last_photo_id']:
+        supplier_db[text] = state['last_photo_id']
+        user_states[chat_id] = {'waiting_for_name': False, 'last_photo_id': None}
+        bot.send_message(chat_id, f"Фото с названием '{text}' сохранено ✅")
+        return
+    
+    # Проверка текста в базе
+    if text in supplier_db:
+        photo_id = supplier_db[text]
+        bot.send_photo(chat_id, photo_id, caption=f"Найдено совпадение: {text}")
     else:
-        bot.send_message(chat_id, "Я вас слышу 😏")
+        # Шутка/мудрость случайная
+        reply_type = random.randint(1, 10)
+        if reply_type == 1:
+            joke = random.choice(jokes)
+            bot.send_message(chat_id, f"😏 {joke}")
+        elif reply_type <= 4:
+            wisdom = random.choice(wisdoms)
+            bot.send_message(chat_id, f"💡 {wisdom}")
+        else:
+            bot.send_message(chat_id, "Ого! Попробуй фото или текст по инструкции 🐾")
 
-# Запуск
-if __name__ == "__main__":
-    if not os.path.exists('photos'):
-        os.mkdir('photos')
-    bot.polling(none_stop=True)
+# ================== Запуск ==================
+bot.infinity_polling()
