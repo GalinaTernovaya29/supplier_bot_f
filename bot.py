@@ -1,157 +1,147 @@
 import telebot
-from telebot.types import ReplyKeyboardMarkup, KeyboardButton
-import os
+from telebot import types
 import json
 import random
-import time
+import os
 
 TOKEN = '8240072124:AAHz8TZSCltrxkLx4eyzCh84WgriGK3PfIo'  # твой токен
-bot = telebot.TeleBot(TOKEN)
+bot = telebot.TeleBot(TOKEN, parse_mode='HTML')
 
-# Файлы базы
 DATABASE_FILE = 'database.json'
 
-# Загрузка базы
-if os.path.exists(DATABASE_FILE):
-    with open(DATABASE_FILE, 'r', encoding='utf-8') as f:
-        database = json.load(f)
-else:
-    database = []
+# Создаем или загружаем базу
+if not os.path.exists(DATABASE_FILE):
+    with open(DATABASE_FILE, 'w', encoding='utf-8') as f:
+        json.dump([], f, ensure_ascii=False, indent=4)
+
+with open(DATABASE_FILE, 'r', encoding='utf-8') as f:
+    database = json.load(f)
 
 # Приветствия 1 к 5
-greetings = ["Здравствуйте!", "Привет!", "Добрый день!", "Рад видеть!", "Приветствую!"]
-
-# Юмор 1 к 40 (изысканный, строгий)
-humor_list = [
-    "Иногда молчание громче слов, но не у всех хватает терпения это заметить.",
-    "Даже часы, остановившись, дважды в день показывают точное время.",
-    "Люди часто спорят о важном, забывая о главном.",
-    "Лучше однажды посмеяться над собой, чем всю жизнь над другими.",
-    "Тот, кто слишком серьёзно относится к шуткам, их не понимает.",
-    "В каждой шутке есть крупица истины, но не всякая крупица достойна внимания.",
-    "Смех — это мост между глупостью и мудростью.",
-    "Некоторые шутки лучше хранить в тетради, а не в устах.",
-    "Хитрость без смеха скучна, смех без хитрости — наивен.",
-    "Сарказм — это тонкая кисть, а не молоток."
-] * 4  # 40 вариантов
-
-# Мудрые мысли 1 к 30
-wise_list = [
-    "Слово не воробей, вылетит — не поймаешь.",
-    "Кто ищет, тот всегда найдёт, но не всегда то, что ожидал.",
-    "Время — лучший учитель, но к сожалению, убивает всех своих учеников.",
-    "Человек узнаёт себя в деле, а не в словах.",
-    "Терпение и труд всё перетрут, кроме лени.",
-    "Истинная мудрость в умении слушать.",
-    "Не тот силён, кто побеждает других, а кто побеждает себя.",
-    "Пусть твои поступки говорят громче слов.",
-    "Кто рано встаёт, тому не всегда удаётся, зато он живёт дольше.",
-    "Счастье любит тишину и сосредоточенность.",
-    "Мир любит тех, кто умеет ждать и действовать.",
-    "Люди забывают слова, но помнят дела.",
-    "Не бойся ошибок — бойся их повторения.",
-    "Лучше сделать и пожалеть, чем не сделать и мучиться.",
-    "Красота в простоте, сила — в ясности мысли.",
-    "Доброта возвращается тем, кто умеет её давать.",
-    "Жизнь — это не количество вдохов, а моменты, от которых захватывает дух.",
-    "Учись видеть невидимое, слышать неслышное, чувствовать неощутимое.",
-    "Поступок человека измеряется не словами, а результатом.",
-    "Чем выше цель, тем острее ответственность.",
-    "Не ищи лёгких путей — ищи правильные.",
-    "Мудрость приходит, когда исчезает гордыня.",
-    "Истина часто скрыта в деталях.",
-    "Лучше понять, чем быть понятым.",
-    "Сила в том, чтобы вовремя остановиться.",
-    "Каждое начало таит конец, и каждое завершение — новое начало.",
-    "Величие в скромности.",
-    "Не трать жизнь на ненужное.",
-    "Люби мир таким, какой он есть, а не каким хотел бы.",
-    "Слушай больше, говори меньше."
+greetings = [
+    "Здравствуйте!",
+    "Привет!",
+    "Добрый день!",
+    "Рад видеть вас!",
+    "Приветствую!"
 ]
 
-# Состояния пользователей: {user_id: {"photo": last_photo_id}}
-user_state = {}
+# Юмор 1 к 40 (изысканный, строгий)
+humor = [
+    "Шутки в сторону, но иногда стоит улыбнуться. 😉",
+    "В мире серых будней ирония — редкая роскошь.",
+    "Смех — секретный соус к серьезным делам.",
+    "Юмор — как специя: без меры плохо, с мерой вкусно.",
+    "Даже шахматная партия требует лёгкой улыбки.",
+    "Смеётся тот, кто понимает, что жизнь — это тест.",
+    "Сарказм иногда дороже золота.",
+    "Шутки — как кофе, бодрят мысли.",
+    "Ирония делает строгие истины мягче.",
+    "Смех — это уважение к нелепости мира.",
+    # ... добавьте до 40
+]
+
+# Мудрые мысли 1 к 30
+wisdoms = [
+    "Сделанное с умом лучше, чем сделанное в спешке.",
+    "Каждое действие оставляет след в памяти мира.",
+    "Тот, кто ищет знания, никогда не заблудится.",
+    "Слова без дела пусты, а дело без мысли опасно.",
+    "Мудрость растет там, где терпение живет.",
+    "Сила духа проявляется в тишине решений.",
+    "Настоящее богатство — внутреннее спокойствие.",
+    "Уважение к себе рождает уважение к другим.",
+    "Лучше маленький шаг к цели, чем большой отступ.",
+    "Истинное знание — осознанная практика.",
+    # ... добавьте до 30
+]
+
+# Хранилище промежуточных фото для новых поставщиков
+pending_photos = {}
 
 # Кнопка старт
 def start_keyboard():
-    markup = ReplyKeyboardMarkup(resize_keyboard=True)
-    markup.add(KeyboardButton("Старт"))
-    return markup
+    keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    keyboard.add("Старт")
+    return keyboard
 
-# Случайное приветствие + мудрость + юмор
-def welcome_message():
-    greet = random.choice(greetings)
-    wise = random.choice(wise_list)
-    humor = random.choice(humor_list)
-    return f"{greet}\n\n💡 {wise}\n\n😏 {humor}"
+# Очистка чата (только для новых фото/текста)
+def clear_pending(user_id):
+    if user_id in pending_photos:
+        del pending_photos[user_id]
 
-# Обновление базы
-def save_database():
-    with open(DATABASE_FILE, 'w', encoding='utf-8') as f:
-        json.dump(database, f, ensure_ascii=False, indent=2)
-
-# Проверка по фото
-def find_by_photo(photo_id):
-    for item in database:
-        if item.get("photo_id") == photo_id:
-            return item
-    return None
-
-# Проверка по тексту
-def find_by_text(text):
-    for item in database:
-        if item.get("name").lower() == text.lower():
-            return item
-    return None
-
-# Обработчик /start
+# Обработчик команды /start и кнопки "Старт"
 @bot.message_handler(commands=['start'])
-def send_welcome(message):
-    user_state[message.chat.id] = {}
-    bot.send_message(message.chat.id, welcome_message(), reply_markup=start_keyboard())
+@bot.message_handler(func=lambda m: m.text == "Старт")
+def handle_start(message):
+    user_id = message.from_user.id
+    clear_pending(user_id)
+    greeting = random.choice(greetings)
+    bot.send_message(message.chat.id, f"{greeting}\nБот готов. Загружайте фото или текст.", reply_markup=start_keyboard())
 
-# Обработчик всех сообщений
-@bot.message_handler(content_types=['text', 'photo'])
-def handle_message(message):
-    user_id = message.chat.id
+# Обработка фото
+@bot.message_handler(content_types=['photo'])
+def handle_photo(message):
+    user_id = message.from_user.id
+    photo_id = message.photo[-1].file_id
 
-    # Начало
-    if message.text == "Старт":
-        user_state[user_id] = {}
-        bot.send_message(user_id, welcome_message())
+    # Ищем совпадение в базе
+    found = None
+    for item in database:
+        if photo_id == item.get('photo_id'):
+            found = item
+            break
+
+    if found:
+        bot.send_message(message.chat.id, f"Найдено совпадение:\nНазвание: {found['name']}")
+        bot.send_photo(message.chat.id, photo_id)
+    else:
+        pending_photos[user_id] = photo_id
+        bot.send_message(message.chat.id, "Фото получено. Пожалуйста, пришлите название поставщика, иначе фото не сохранится.")
+
+# Обработка текста
+@bot.message_handler(func=lambda m: True)
+def handle_text(message):
+    user_id = message.from_user.id
+    text = message.text.strip()
+
+    if user_id in pending_photos:
+        # Сохраняем новое фото с названием
+        new_entry = {'name': text, 'photo_id': pending_photos[user_id]}
+        database.append(new_entry)
+        with open(DATABASE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(database, f, ensure_ascii=False, indent=4)
+        bot.send_message(message.chat.id, "Сохранено ✅", reply_markup=start_keyboard())
+        clear_pending(user_id)
         return
 
-    # Фото
-    if message.content_type == 'photo':
-        photo_id = message.photo[-1].file_id
-        item = find_by_photo(photo_id)
-        if item:
-            bot.send_photo(user_id, photo_id, caption=f"Найдено в базе: {item['name']}")
-        else:
-            user_state[user_id] = {"photo": photo_id, "awaiting_name": True}
-            bot.send_message(user_id, "📸 Фото получено. Пожалуйста, пришлите название поставщика.")
-        return
+    # Проверка по базе без фото
+    found = [item for item in database if text.lower() in item['name'].lower()]
+    if found:
+        for item in found:
+            bot.send_message(message.chat.id, f"Найдено совпадение: {item['name']}")
+            bot.send_photo(message.chat.id, item['photo_id'])
+    else:
+        bot.send_message(message.chat.id, "Фото не найдено. Пожалуйста, пришлите фото для поиска.")
 
-    # Текст
-    if message.content_type == 'text':
-        text = message.text.strip()
-        state = user_state.get(user_id, {})
+# ИИ-консультант (шутки + мудрости)
+@bot.message_handler(func=lambda m: True)
+def ai_consultant(message):
+    humor_msg = random.choice(humor)
+    wisdom_msg = random.choice(wisdoms)
+    bot.send_message(message.chat.id, f"{humor_msg}\n{wisdom_msg}")
 
-        # Ожидание названия после фото
-        if state.get("awaiting_name") and state.get("photo"):
-            database.append({"photo_id": state["photo"], "name": text})
-            save_database()
-            bot.send_message(user_id, f"✅ Сохранено: {text}", reply_markup=start_keyboard())
-            user_state[user_id] = {}
-            return
+# Webhook (Render)
+from flask import Flask, request
 
-        # Поиск по тексту
-        item = find_by_text(text)
-        if item:
-            bot.send_photo(user_id, item["photo_id"], caption=f"Найдено по тексту: {item['name']}")
-        else:
-            bot.send_message(user_id, "❗ Не найдено. Пожалуйста, пришлите фото для добавления в базу.")
-        return
+app = Flask(__name__)
 
-# Запуск бота
-# bot.infinity_polling()
+@app.route("/", methods=["POST"])
+def webhook():
+    json_str = request.get_data().decode('utf-8')
+    update = telebot.types.Update.de_json(json_str)
+    bot.process_new_updates([update])
+    return "OK", 200
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
