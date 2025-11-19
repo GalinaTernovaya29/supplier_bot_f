@@ -1,116 +1,157 @@
 import telebot
-from telebot import types
-import random
+from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 import os
 import json
+import random
+import time
 
-TOKEN = '8240072124:AAHz8TZSCltrxkLx4eyzCh84WgriGK3PfIo'
+TOKEN = '8240072124:AAHz8TZSCltrxkLx4eyzCh84WgriGK3PfIo'  # твой токен
 bot = telebot.TeleBot(TOKEN)
 
-# Путь к базе
-DB_PATH = 'database.json'
+# Файлы базы
+DATABASE_FILE = 'database.json'
 
-# Загрузка базы поставщиков
-if os.path.exists(DB_PATH):
-    with open(DB_PATH, 'r', encoding='utf-8') as f:
-        db = json.load(f)
+# Загрузка базы
+if os.path.exists(DATABASE_FILE):
+    with open(DATABASE_FILE, 'r', encoding='utf-8') as f:
+        database = json.load(f)
 else:
-    db = {}
+    database = []
 
-# Приветствия, чередуются 1 к 5
-greetings = [
-    "Здравствуйте!",
-    "Привет!",
-    "Доброго дня!",
-    "Рад вас видеть!",
-    "Приветствую!"
+# Приветствия 1 к 5
+greetings = ["Здравствуйте!", "Привет!", "Добрый день!", "Рад видеть!", "Приветствую!"]
+
+# Юмор 1 к 40 (изысканный, строгий)
+humor_list = [
+    "Иногда молчание громче слов, но не у всех хватает терпения это заметить.",
+    "Даже часы, остановившись, дважды в день показывают точное время.",
+    "Люди часто спорят о важном, забывая о главном.",
+    "Лучше однажды посмеяться над собой, чем всю жизнь над другими.",
+    "Тот, кто слишком серьёзно относится к шуткам, их не понимает.",
+    "В каждой шутке есть крупица истины, но не всякая крупица достойна внимания.",
+    "Смех — это мост между глупостью и мудростью.",
+    "Некоторые шутки лучше хранить в тетради, а не в устах.",
+    "Хитрость без смеха скучна, смех без хитрости — наивен.",
+    "Сарказм — это тонкая кисть, а не молоток."
+] * 4  # 40 вариантов
+
+# Мудрые мысли 1 к 30
+wise_list = [
+    "Слово не воробей, вылетит — не поймаешь.",
+    "Кто ищет, тот всегда найдёт, но не всегда то, что ожидал.",
+    "Время — лучший учитель, но к сожалению, убивает всех своих учеников.",
+    "Человек узнаёт себя в деле, а не в словах.",
+    "Терпение и труд всё перетрут, кроме лени.",
+    "Истинная мудрость в умении слушать.",
+    "Не тот силён, кто побеждает других, а кто побеждает себя.",
+    "Пусть твои поступки говорят громче слов.",
+    "Кто рано встаёт, тому не всегда удаётся, зато он живёт дольше.",
+    "Счастье любит тишину и сосредоточенность.",
+    "Мир любит тех, кто умеет ждать и действовать.",
+    "Люди забывают слова, но помнят дела.",
+    "Не бойся ошибок — бойся их повторения.",
+    "Лучше сделать и пожалеть, чем не сделать и мучиться.",
+    "Красота в простоте, сила — в ясности мысли.",
+    "Доброта возвращается тем, кто умеет её давать.",
+    "Жизнь — это не количество вдохов, а моменты, от которых захватывает дух.",
+    "Учись видеть невидимое, слышать неслышное, чувствовать неощутимое.",
+    "Поступок человека измеряется не словами, а результатом.",
+    "Чем выше цель, тем острее ответственность.",
+    "Не ищи лёгких путей — ищи правильные.",
+    "Мудрость приходит, когда исчезает гордыня.",
+    "Истина часто скрыта в деталях.",
+    "Лучше понять, чем быть понятым.",
+    "Сила в том, чтобы вовремя остановиться.",
+    "Каждое начало таит конец, и каждое завершение — новое начало.",
+    "Величие в скромности.",
+    "Не трать жизнь на ненужное.",
+    "Люби мир таким, какой он есть, а не каким хотел бы.",
+    "Слушай больше, говори меньше."
 ]
 
-# Юмор, строгий, 1 к 40
-jokes = [
-    "Мудрость приходит к тем, кто умеет ждать... хотя иногда спешка тоже помогает 😏",
-    "Не спорь с дураком — люди могут не заметить разницы 🧐",
-    "Лучше молчать и казаться глупцом, чем говорить и убедить всех в обратном 🤫",
-    # ... до 40 штук
-]
+# Состояния пользователей: {user_id: {"photo": last_photo_id}}
+user_state = {}
 
-# Мудрые мысли, 1 к 30
-wise_quotes = [
-    "Тот, кто умеет слушать, слышит даже молчание 🌿",
-    "Делай добро и бросай его в воду, оно вернется к тебе 🕊️",
-    "Настоящая сила в умении сохранять спокойствие в бурю 🌊",
-    # ... до 30 штук
-]
+# Кнопка старт
+def start_keyboard():
+    markup = ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(KeyboardButton("Старт"))
+    return markup
 
-# Временное хранилище фото перед подписанием
-pending_photos = {}
+# Случайное приветствие + мудрость + юмор
+def welcome_message():
+    greet = random.choice(greetings)
+    wise = random.choice(wise_list)
+    humor = random.choice(humor_list)
+    return f"{greet}\n\n💡 {wise}\n\n😏 {humor}"
 
-# Функция случайного приветствия
-def get_greeting():
-    return random.choice(greetings)
+# Обновление базы
+def save_database():
+    with open(DATABASE_FILE, 'w', encoding='utf-8') as f:
+        json.dump(database, f, ensure_ascii=False, indent=2)
 
-# Функция случайного юмора
-def get_joke():
-    return random.choice(jokes)
+# Проверка по фото
+def find_by_photo(photo_id):
+    for item in database:
+        if item.get("photo_id") == photo_id:
+            return item
+    return None
 
-# Функция мудрой мысли
-def get_wise():
-    return random.choice(wise_quotes)
+# Проверка по тексту
+def find_by_text(text):
+    for item in database:
+        if item.get("name").lower() == text.lower():
+            return item
+    return None
 
-# Старт / очистка чата
+# Обработчик /start
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    start_btn = types.KeyboardButton('Старт')
-    markup.add(start_btn)
-    bot.send_message(message.chat.id, f"{get_greeting()} Я ваш ИИ-консультант 🤖\n{get_wise()}", reply_markup=markup)
+    user_state[message.chat.id] = {}
+    bot.send_message(message.chat.id, welcome_message(), reply_markup=start_keyboard())
 
-# Обработка текстовых сообщений
-@bot.message_handler(content_types=['text'])
-def handle_text(message):
-    chat_id = message.chat.id
-    text = message.text.strip()
-    
-    # Если ждем название после фото
-    if chat_id in pending_photos:
-        photo_file_id = pending_photos.pop(chat_id)
-        db[text] = photo_file_id
-        with open(DB_PATH, 'w', encoding='utf-8') as f:
-            json.dump(db, f, ensure_ascii=False, indent=2)
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.add(types.KeyboardButton('Старт'))
-        bot.send_message(chat_id, "Сохранено ✅", reply_markup=markup)
+# Обработчик всех сообщений
+@bot.message_handler(content_types=['text', 'photo'])
+def handle_message(message):
+    user_id = message.chat.id
+
+    # Начало
+    if message.text == "Старт":
+        user_state[user_id] = {}
+        bot.send_message(user_id, welcome_message())
         return
 
-    # Поиск по тексту в базе
-    if text in db:
-        bot.send_photo(chat_id, db[text], caption=f"Найдено: {text}")
-    else:
-        bot.send_message(chat_id, f"Ого! Я такого поставщика не знаю 😏\nПопробуй загрузить фото, чтобы добавить его.")
+    # Фото
+    if message.content_type == 'photo':
+        photo_id = message.photo[-1].file_id
+        item = find_by_photo(photo_id)
+        if item:
+            bot.send_photo(user_id, photo_id, caption=f"Найдено в базе: {item['name']}")
+        else:
+            user_state[user_id] = {"photo": photo_id, "awaiting_name": True}
+            bot.send_message(user_id, "📸 Фото получено. Пожалуйста, пришлите название поставщика.")
+        return
 
-# Обработка фото
-@bot.message_handler(content_types=['photo'])
-def handle_photo(message):
-    chat_id = message.chat.id
-    file_id = message.photo[-1].file_id
+    # Текст
+    if message.content_type == 'text':
+        text = message.text.strip()
+        state = user_state.get(user_id, {})
 
-    # Проверка совпадений по фото
-    found = False
-    for name, pid in db.items():
-        if pid == file_id:
-            bot.send_message(chat_id, f"Уже есть: {name}")
-            found = True
-            break
+        # Ожидание названия после фото
+        if state.get("awaiting_name") and state.get("photo"):
+            database.append({"photo_id": state["photo"], "name": text})
+            save_database()
+            bot.send_message(user_id, f"✅ Сохранено: {text}", reply_markup=start_keyboard())
+            user_state[user_id] = {}
+            return
 
-    if not found:
-        pending_photos[chat_id] = file_id
-        bot.send_message(chat_id, "Фото принято! 🖼️ Пожалуйста, отправьте название поставщика:")
+        # Поиск по тексту
+        item = find_by_text(text)
+        if item:
+            bot.send_photo(user_id, item["photo_id"], caption=f"Найдено по тексту: {item['name']}")
+        else:
+            bot.send_message(user_id, "❗ Не найдено. Пожалуйста, пришлите фото для добавления в базу.")
+        return
 
-# ИИ-консультант (для любого текста без фото)
-@bot.message_handler(func=lambda m: True)
-def chat_ai(message):
-    chat_id = message.chat.id
-    if chat_id not in pending_photos:
-        bot.send_message(chat_id, f"{get_joke()}")
-
+# Запуск бота
 bot.infinity_polling()
