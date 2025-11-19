@@ -7,7 +7,7 @@ return
 db = load_db()
 for supplier, items in db.items():
 for item in items:
-if item["file_id"] == file_id:
+if item ["file_id"] == file_id:
 bot.send_message(user_id, generate_greeting())
 bot.send_message(user_id, f"Совпадение найдено: {supplier}")
 return
