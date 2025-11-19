@@ -154,4 +154,4 @@ def handle_message(message):
         return
 
 # Запуск бота
-bot.infinity_polling()
+# bot.infinity_polling()
